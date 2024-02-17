@@ -14,7 +14,7 @@ contract Staking {
    IERC20 PUBLIC rewardToken;
 
    mapping(address => uint256) s_balance;
-   mapping(address => uint256) userReward;
+   mapping(address => uint256) s_userReward;
    mapping(address => uint256) s_reward;
   
    uint256 s_totalSupply;
@@ -41,7 +41,18 @@ contract Staking {
    }
 
 
+    function earned(uint256 amount) public view  returns (uint256){
+        uint256 currentBalance = s_balance[amount];
+        uint256 userAmountPaid = s_userReward[amount];
+        uint256 rewardSave  = getRewardpaySave();
+        uint256 pastReward = s_reward[amount];
 
+         uint256 _earned = ((currentBalance * (currentRewardPerToken - amountPaid) / 1e18) +
+        pastRewards);
+        return _earned;
+    }
+
+    
 
 
    constructor(address _stakeToken, address _rewardToken){
