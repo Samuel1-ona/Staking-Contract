@@ -1,101 +1,89 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity 0.8.20;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
 import "./IERC20.sol";
 
-contract Staking{
+contract Staking {
+    error ZeroAddressCannotStake();
+    error CannotDepositZeroAmount();
+    error TransferFailed();
+    error WithdrawFailed();
+    error AlreadyWithdrawn();
+    error StakingPeriodNotEnded();
 
-    // custom error message
-     error ZERO_ADDRESS_CAN_NOT_STAKING();
-     error CAN_NOT_DEPOSIT_ZERO_AMOUNT();
-     error TRANSFER_FAILED();
-     error WITHDRAW_FAILED();
-     error WITHDRAW_ALREADY();
-     error STAKING_PERIOD_NOT_ENDED();
+    IERC20 public stakeToken;
+    address public owner;
 
-
-    
-    IERC20  stakeToken;
-    address owner;
-
-    struct Stake{
+    struct Stake {
         uint256 amount;
         uint256 startTime;
         uint256 endTime;
-        bool withdraw;
-    }
-      
-      mapping (address => uint) stakes;
-
-      uint256 constant interestRate = 10;  // The interest rate percentage per annum 
-      uint256 constant  timeUint = 356; // Number of days in a year
-
-    constructor(uint256 _stakeToken){
-        stakeToken = _stakeToken;
-        owner = msg.sendr;
+        bool withdrawn;
     }
 
+    mapping(address => Stake) public stakes;
 
-   function stakeToken(uint256 _amount,uint256 _duration) external {
-         if(msg.sender == 0){
-            revert ZERO_ADDRESS_CAN_NOT_STAKING();
-         }
-         if(_amount < 0){
-            revert CAN_NOT_DEPOSIT_ZERO_AMOUNT();
-         }
+    uint256 constant interestRate = 10; // The interest rate percentage per annum
+    uint256 constant timeUnit = 365; // Number of days in a year
 
-         stakes[msg.sender] = Stake({
-            amount: _amount
+    constructor(address _stakeToken) {
+        stakeToken = IERC20(_stakeToken);
+        owner = msg.sender;
+    }
+
+    function stakeTokens(uint256 _amount, uint256 _duration) external {
+        if (msg.sender == address(0)) {
+            revert ZeroAddressCannotStake();
+        }
+        if (_amount == 0) {
+            revert CannotDepositZeroAmount();
+        }
+
+        bool transferSuccess = stakeToken.transferFrom(msg.sender, address(this), _amount);
+        if (!transferSuccess) {
+            revert TransferFailed();
+        }
+
+        stakes[msg.sender] = Stake({
+            amount: _amount,
             startTime: block.timestamp,
             endTime: block.timestamp + _duration,
-            withdraw: false
-         });
-   }
-
-
-// A function that calculate the interest rate for every staking over the duration
-   function calculateInterest(address _user) external view returns (uint256){
-    Stake memory userStake = stake[_user];
-         if(block.timestamp < userStake.endTime){
-
-            revert STAKING_PERIOD_NOT_ENDED();
-         }
-    uint256 stakingDuration = userStake.endTime - userStake.startTime;
-    uint256 stakingInterest = (userStake.amount *interestRate *stakingDuration) / (timeUint*100);
-
-    return stakingInterest;
-   }
-
-
-// withdraw 
-   function withdraw() external view {
-
-    Stake memory userStake = stakes[msg.sender];
-
-          if(block.timestamp < userStake.endTime){
-
-            revert STAKING_PERIOD_NOT_ENDED();
-         }
-
-          if (userStake.withdrawn) {
-        revert WITHDRAW_ALREADY();
+            withdrawn: false
+        });
     }
 
-    uint256 userInterest = calculateInterest(msg.sender);
-    userStake.withdraw = true;
+    // A function that calculates the interest for every staking over the duration
+    function calculateInterest(address _user) public view returns (uint256) {
+        Stake memory userStake = stakes[_user];
+        if (block.timestamp < userStake.endTime) {
+            revert StakingPeriodNotEnded();
+        }
+        uint256 stakingDuration = userStake.endTime - userStake.startTime;
+        uint256 stakingInterest = (userStake.amount * interestRate * stakingDuration) / (timeUnit * 100);
 
-    bool transferSuccess = stakingToken.transfer(msg.sender, userStake.amount + interest);
+        return stakingInterest;
+    }
 
-         if (!transferSuccess) {
-           revert TRANSFER_FAILED();
-}
+    // Withdraw function
+    function withdraw() external {
+        Stake storage userStake = stakes[msg.sender];
+        if (block.timestamp < userStake.endTime) {
+            revert StakingPeriodNotEnded();
+        }
+        if (userStake.withdrawn) {
+            revert AlreadyWithdrawn();
+        }
 
-   }
+        uint256 userInterest = calculateInterest(msg.sender);
+        userStake.withdrawn = true;
 
+        bool transferSuccess = stakeToken.transfer(msg.sender, userStake.amount + userInterest);
+        if (!transferSuccess) {
+            revert WithdrawFailed();
+        }
+    }
 
-
-   function getStakingAmount(address _user) external view returns (uint256) {
-    return stakes[_user].amount;
-
-   }
+    function getStakingAmount(address _user) external view returns (uint256) {
+        return stakes[_user].amount;
+    }
 }
