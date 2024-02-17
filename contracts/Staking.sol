@@ -78,6 +78,21 @@ function stake (uint256 amount) external{
         }
 }
 
+function withdraw (uint256 amount) external{
+    updatedReward(msg.sender);
+    greaterThanZero(amount);
+
+    s_balance[msg.sender] = s_balance[msg.sender] - amount;
+    s_totalSupply = s_totalSupply - amount;
+
+     bool transferSuccess = stakeToken.transfer(msg.sender, _amount);
+        if (!transferSuccess) {
+            revert STAKING_TRANSFERFAILED();
+        }
+}
+
+
+
 
 
 }
