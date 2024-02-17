@@ -21,7 +21,6 @@ contract Staking {
    uint256 rewardPertokensaves
    uint256 rewardRate = 100;
 
-   uint256 s_startTime = block.timestamp;
    uint256 s_endTime;
 
 
@@ -31,6 +30,13 @@ contract Staking {
        }
    }
 
+
+     function updatedReward() private {
+        rewardPertokensaves = getRewardpaySave();
+        s_endTime = block.timestamp;
+        s_reward[account] = earned(account);
+        s_userReward[account] = rewardPertokensaves;
+     }
 
    function getRewardpaySave(address account) private view returns (uint256){
          if(s_totalSupply == 0){
@@ -52,15 +58,25 @@ contract Staking {
         return _earned;
     }
 
-    
 
 
    constructor(address _stakeToken, address _rewardToken){
       stakeToken = IERC20 (_stakeToken);
-      rewardRate = IERC20 (_rewardToken
+      rewardRate = IERC20 (_rewardToken);
    }
 
+function stake (uint256 amount) external{
+    updatedReward(msg.sender);
+    greaterThanZero(amount);
 
+    s_balance[msg.sender] = s_balance[msg.sender] + amount;
+    s_totalSupply = s_totalSupply + amount;
+
+     bool transferSuccess = stakeToken.transferFrom(msg.sender, address(this), _amount);
+        if (!transferSuccess) {
+            revert STAKING_TRANSFERFAILED();
+        }
+}
 
 
 
