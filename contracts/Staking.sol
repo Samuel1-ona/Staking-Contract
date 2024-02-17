@@ -53,7 +53,7 @@ contract Staking{
    }
 
 
-
+// A function that calculate the interest rate for every staking over the duration
    function calculateInterest(address _user) external view returns (uint256){
     Stake memory userStake = stake[_user];
          if(block.timestamp < userStake.endTime){
@@ -66,14 +66,36 @@ contract Staking{
     return stakingInterest;
    }
 
+
+// withdraw 
    function withdraw() external view {
 
+    Stake memory userStake = stakes[msg.sender];
+
+          if(block.timestamp < userStake.endTime){
+
+            revert STAKING_PERIOD_NOT_ENDED();
+         }
+
+          if (userStake.withdrawn) {
+        revert WITHDRAW_ALREADY();
+    }
+
+    uint256 userInterest = calculateInterest(msg.sender);
+    userStake.withdraw = true;
+
+    bool transferSuccess = stakingToken.transfer(msg.sender, userStake.amount + interest);
+
+         if (!transferSuccess) {
+           revert TRANSFER_FAILED();
+}
+
    }
 
-   function getStakingAmount(address _user) external view {
+
+
+   function getStakingAmount(address _user) external view returns (uint256) {
+    return stakes[_user].amount;
 
    }
-
-
-
 }
