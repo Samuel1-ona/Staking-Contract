@@ -18,16 +18,26 @@ contract Staking {
    mapping(address => uint256) s_reward;
   
    uint256 s_totalSupply;
+   uint256 rewardPertokensaves
    uint256 rewardRate = 100;
 
-   uint256 startTime = block.timestamp;
-   uint256 endTime;
+   uint256 s_startTime = block.timestamp;
+   uint256 s_endTime;
 
 
    function greaterThanZero(uint256 amount) private {
        if(amount == 0){
         revert STAKING_NO_NEED_ZERO();
        }
+   }
+
+
+   function getRewardpaySave(address account) private view returns (uint256){
+         if(s_totalSupply == 0){
+            return rewardPertokensaves;
+         }
+
+         rewardPertokensaves = (((block.timestamp - s_endTime) * rewardRate * 10e18) / s_totalSupply);
    }
 
 
